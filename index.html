@@ -1,964 +1,312 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>贪吃蛇大乱斗</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>贪吃蛇大乱斗 - 联机版</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg: #0d1117;
-  --surface: #161b22;
-  --border: #30363d;
-  --text: #e6edf3;
-  --muted: #8b949e;
-  --green: #39d353;
-  --blue: #58a6ff;
-  --red: #f85149;
-  --yellow: #e3b341;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
-  padding: 10px 6px 20px;
-  user-select: none;
-  -webkit-user-select: none;
-  overflow-x: hidden;
-}
-
-/* ── Header ── */
-header {
-  text-align: center;
-  margin-bottom: 8px;
-}
-h1 {
-  font-size: clamp(1.2rem, 4vw, 1.7rem);
-  letter-spacing: 3px;
-  background: linear-gradient(90deg, #39d353, #58a6ff, #f85149, #e3b341);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-#room-info {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-top: 3px;
-}
-#room-info span { color: var(--text); font-weight: 600; }
-
-/* ── Score bar ── */
-#scorebar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 6px;
-  font-size: 0.82rem;
-  color: var(--muted);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-#my-badge {
-  padding: 2px 14px;
-  border-radius: 20px;
-  font-weight: 700;
-  border: 2px solid currentColor;
-  font-size: 0.88rem;
-}
-#my-score-val { color: var(--text); font-weight: 700; font-size: 1.05rem; }
-
-/* ── Player chips ── */
-#player-list {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-bottom: 8px;
-  min-height: 24px;
-  max-width: 820px;
-}
-.pchip {
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 0.76rem;
-  white-space: nowrap;
-  transition: opacity .3s;
-}
-.pchip.me { font-weight: 700; }
-.pchip.dead { text-decoration: line-through; opacity: .3; }
-
-/* ── Canvas wrap ── */
-#canvas-wrap {
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 0 60px rgba(57,211,83,.12), 0 0 120px rgba(88,166,255,.07);
-  flex-shrink: 0;
-}
-canvas { display: block; background: var(--surface); }
-
-/* ── Overlay ── */
-#overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(13,17,23,.88);
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  transition: opacity .25s;
-  padding: 20px;
-}
-#overlay.hidden { opacity: 0; pointer-events: none; }
-#ov-title {
-  font-size: clamp(1.6rem, 6vw, 2.4rem);
-  font-weight: 800;
-  background: linear-gradient(90deg, #39d353, #58a6ff, #f85149);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: 2px;
-  text-align: center;
-}
-#ov-sub {
-  color: var(--muted);
-  font-size: 0.88rem;
-  text-align: center;
-  line-height: 1.7;
-  max-width: 320px;
-}
-
-/* Room input area */
-#room-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-  max-width: 280px;
-}
-.form-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-input[type=text] {
-  flex: 1;
-  padding: 8px 12px;
-  background: #21262d;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color .2s;
-}
-input[type=text]:focus { border-color: var(--green); }
-input[type=text]::placeholder { color: var(--muted); }
-
-.btn {
-  padding: 9px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity .2s, transform .1s;
-  white-space: nowrap;
-}
-.btn:active { transform: scale(.96); }
-.btn-green {
-  background: linear-gradient(90deg, #39d353, #1a7f37);
-  color: #fff;
-  box-shadow: 0 3px 16px rgba(57,211,83,.35);
-}
-.btn-blue {
-  background: linear-gradient(90deg, #58a6ff, #1a56a0);
-  color: #fff;
-  box-shadow: 0 3px 16px rgba(88,166,255,.35);
-}
-.share-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-#share-link {
-  font-size: 0.72rem;
-  color: var(--green);
-  cursor: pointer;
-  background: #21262d;
-  padding: 3px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#copy-tip {
-  font-size: 0.72rem;
-  color: var(--green);
-  opacity: 0;
-  transition: opacity .3s;
-}
-
-/* ── Hint ── */
-#hint {
-  margin-top: 8px;
-  font-size: 0.72rem;
-  color: #484f58;
-  text-align: center;
-  line-height: 1.9;
-}
-kbd {
-  background: #21262d;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 0.7rem;
-  font-family: monospace;
-}
-
-/* ── Status badge ── */
-#conn-status {
-  position: fixed;
-  top: 8px; right: 12px;
-  font-size: 0.72rem;
-  color: var(--muted);
-  z-index: 99;
-}
-#conn-status.ok { color: var(--green); }
-#conn-status.err { color: var(--red); }
-
-/* ── Death banner ── */
-#death-banner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(248,81,73,.18);
-  border: 2px solid var(--red);
-  border-radius: 12px;
-  padding: 8px 24px;
-  color: var(--red);
-  font-weight: 700;
-  font-size: 1rem;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .3s;
-  white-space: nowrap;
-}
-#death-banner.show { opacity: 1; }
-
-/* ── Mobile D-Pad ── */
-#dpad {
-  display: none;
-  grid-template-columns: repeat(3, 60px);
-  grid-template-rows: repeat(2, 60px);
-  gap: 6px;
-  margin-top: 14px;
-}
-@media (pointer: coarse) { #dpad { display: grid; } }
-@media (max-width: 480px) { #dpad { display: grid; } }
-.dpad-btn {
-  width: 60px; height: 60px;
-  background: #21262d;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--muted);
-  font-size: 1.5rem;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-.dpad-btn:active { background: #2d333b; color: var(--text); }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#fff;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+canvas{border:2px solid #1a1a2e;border-radius:8px;display:block;touch-action:none}
+#join-ui{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px)}
+#join-ui h1{font-size:2.4rem;margin-bottom:.5rem;background:linear-gradient(135deg,#39d353,#58a6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:none;font-weight:700;letter-spacing:2px}
+#join-ui .sub{color:#666;font-size:.85rem;margin-bottom:2rem}
+.modal{background:#12121a;border:1px solid #1e1e2e;border-radius:16px;padding:2rem;width:min(380px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h2{font-size:1.1rem;color:#888;margin-bottom:1.2rem;text-align:center;font-weight:400}
+label{display:block;color:#aaa;font-size:.8rem;margin-bottom:.4rem}
+input{width:100%;padding:.7rem 1rem;border:1px solid #2a2a3a;border-radius:8px;background:#0a0a14;color:#fff;font-size:1rem;outline:none;margin-bottom:1rem;transition:border-color .2s}
+input:focus{border-color:#39d353}
+input::placeholder{color:#444}
+.btn{display:block;width:100%;padding:.8rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;transition:all .2s;font-weight:600;margin-top:.5rem}
+.btn-green{background:linear-gradient(135deg,#39d353,#28a745);color:#fff}
+.btn-green:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(57,211,83,.3)}
+.hint{color:#444;font-size:.72rem;text-align:center;margin-top:1rem;line-height:1.5}
+.hint a{color:#58a6ff;text-decoration:none}
+#top-bar{position:fixed;top:0;left:0;right:0;padding:.5rem 1rem;background:rgba(10,10,15,.9);border-bottom:1px solid #1a1a2e;display:flex;align-items:center;justify-content:space-between;z-index:50;backdrop-filter:blur(4px)}
+#room-label{font-size:.8rem;color:#888}
+#my-color{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
+#rank-list{display:flex;gap:.5rem;font-size:.75rem;color:#aaa;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.rank-item{display:flex;align-items:center;gap:3px;background:#1a1a2e;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.rank-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.rank-name{max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-score{color:#39d353}
+#game-wrap{position:relative;display:flex;flex-direction:column;align-items:center;margin-top:50px}
+#status{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);font-size:.75rem;color:#444;z-index:50}
+#ctrl-hint{position:fixed;bottom:2.5rem;left:50%;transform:translateX(-50%);font-size:.7rem;color:#333;z-index:50;text-align:center;display:none}
+#mobile-ctrl{position:fixed;bottom:1.5rem;left:0;right:0;display:none;justify-content:center;z-index:50;padding:0 1rem}
+.ctrl-grid{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:3px}
+.ctrl-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-size:1.4rem;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;backdrop-filter:blur(4px)}
+.ctrl-btn:active{background:rgba(255,255,255,.18)}
+.ctrl-empty{background:none;border:none}
+.ctrl-center{background:rgba(57,211,83,.15);border-color:rgba(57,211,83,.3)}
+#my-score-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;font-weight:700;color:#39d353;pointer-events:none;z-index:200;opacity:0;transition:opacity .3s;text-shadow:0 0 20px rgba(57,211,83,.5)}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🐍 贪吃蛇大乱斗</h1>
-  <div id="room-info">房间：<span id="room-display">—</span> &nbsp;|&nbsp; 在线：<span id="online-count">0</span> 人</div>
-</header>
-
-<div id="scorebar">
-  <div id="my-badge" style="color:#39d353">我</div>
-  <div>得分 <span id="my-score-val">0</span></div>
-</div>
-
-<div id="player-list"></div>
-
-<div id="canvas-wrap">
-  <canvas id="canvas"></canvas>
-  <div id="overlay">
-    <div id="ov-title">贪吃蛇大乱斗</div>
-    <div id="ov-sub">多人实时联机对战，支持 4 人以上同屏</div>
-    <div id="room-form">
-      <div class="form-row">
-        <input id="room-input" type="text" placeholder="房间号（留空随机）" maxlength="16">
-      </div>
-      <div class="form-row">
-        <input id="name-input" type="text" placeholder="你的昵称（可选）" maxlength="8">
-      </div>
-      <div class="form-row">
-        <button class="btn btn-green" id="btn-create">创建 / 加入</button>
-      </div>
-      <div class="share-row" id="share-area" style="display:none">
-        分享链接：
-        <span id="share-link"></span>
-        <span id="copy-tip">已复制！</span>
-      </div>
-    </div>
+<div id="join-ui">
+  <h1>贪吃蛇大乱斗</h1>
+  <div class="sub">最多8人同屏，支持手机触屏</div>
+  <div class="modal">
+    <h2>加入游戏</h2>
+    <label>房间号（不填则随机）</label>
+    <input id="in-room" placeholder="例如: room1" maxlength="20">
+    <label>服务器地址</label>
+    <input id="in-server" placeholder="https://你的cpolar地址.cpolar.top" value="">
+    <label>你的名字（选填）</label>
+    <input id="in-name" placeholder="留空随机取名" maxlength="8">
+    <button class="btn btn-green" id="btn-join">进入游戏</button>
+    <div class="hint">首次使用需要运行游戏服务器<br>和 cpolar 穿透，延迟与本地网络一致</div>
   </div>
-  <div id="death-banner">💀 你挂了，3秒后复活…</div>
 </div>
 
-<div id="hint">
-  <kbd>↑↓←→</kbd> 或 <kbd>WASD</kbd> 控制移动
-  &nbsp;·&nbsp; 手机左右滑动控制
-  &nbsp;·&nbsp; 吃到食物 +10，击杀对手 +5
+<div id="top-bar">
+  <div id="room-label"></div>
+  <div id="rank-list"></div>
 </div>
 
-<div id="dpad">
-  <div></div>
-  <div class="dpad-btn" id="dup">▲</div>
-  <div></div>
-  <div class="dpad-btn" id="dleft">◀</div>
-  <div class="dpad-btn" id="ddown">▼</div>
-  <div class="dpad-btn" id="dright">▶</div>
+<div id="game-wrap">
+  <canvas id="c"></canvas>
 </div>
+<div id="mobile-ctrl">
+  <div class="ctrl-grid">
+    <div class="ctrl-empty"></div>
+    <div class="ctrl-btn" data-dir="up">▲</div>
+    <div class="ctrl-empty"></div>
+    <div class="ctrl-btn" data-dir="left">◀</div>
+    <div class="ctrl-btn ctrl-center" id="ctrl-go">GO</div>
+    <div class="ctrl-btn" data-dir="right">▶</div>
+    <div class="ctrl-empty"></div>
+    <div class="ctrl-btn" data-dir="down">▼</div>
+    <div class="ctrl-empty"></div>
+  </div>
+</div>
+<div id="ctrl-hint">方向键 / WASD / 滑动屏幕 控制移动</div>
+<div id="status"></div>
+<div id="my-score-flash"></div>
 
-<div id="conn-status">⚪ 未连接</div>
-
-<!-- Ably SDK -->
-<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────────────────────────────────────
-const ABLY_KEY  = 'rm7wDw._QZPUA:QBbo2dn3jLyhf1SvYL0J7H2g-9RIZLa9DZ8v29bC2i8';
-const COLS      = 30;
-const ROWS      = 30;
-const CELL      = Math.min(Math.floor((Math.min(window.innerWidth - 12, 600)) / COLS), 20);
-const TICK_MS   = 120;
-const FOOD_CNT  = 4;
-const RESPAWN_TICKS = 25;  // ~3 seconds
+// ─── 状态 ───────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const COLS = 30, ROWS = 30;
+const CELL = Math.min(Math.floor((Math.min(window.innerWidth, 600) - 20) / COLS), 22);
+canvas.width = COLS * CELL;
+canvas.height = ROWS * CELL;
 
-const COLORS = [
-  '#39d353','#58a6ff','#f85149','#e3b341',
-  '#bc8cff','#ff7b72','#79c0ff','#ffa657',
-];
-const DEFAULT_NAMES = ['绿蛇','蓝蛇','红蛇','金蛇','紫蛇','橙蛇','天蓝','橘黄'];
+let myId = null, myTick = 0;
+let players = {}, foods = [], myColor = '#39d353';
+let connected = false, myDead = false;
+let serverUrl = '', roomId = 'default';
+let pollTimer = null;
+let lastDir = {x:1,y:0};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DOM
-// ─────────────────────────────────────────────────────────────────────────────
-const canvas      = document.getElementById('canvas');
-const ctx         = canvas.getContext('2d');
-canvas.width      = COLS * CELL;
-canvas.height     = ROWS * CELL;
+// 名字颜色
+const NAMES=['绿蛇','蓝蛇','红蛇','金蛇','紫蛇','橙蛇','天蓝','橘黄'];
+const COLORS=['#39d353','#58a6ff','#f85149','#e3b341','#bc8cff','#ff7b72','#79c0ff','#ffa657'];
 
-const overlay     = document.getElementById('overlay');
-const btnCreate   = document.getElementById('btn-create');
-const roomInput   = document.getElementById('room-input');
-const nameInput   = document.getElementById('name-input');
-const roomDisplay = document.getElementById('room-display');
-const onlineCount = document.getElementById('online-count');
-const playerList  = document.getElementById('player-list');
-const myBadge     = document.getElementById('my-badge');
-const myScoreVal  = document.getElementById('my-score-val');
-const connStatus  = document.getElementById('conn-status');
-const shareArea   = document.getElementById('share-area');
-const shareLink   = document.getElementById('share-link');
-const copyTip     = document.getElementById('copy-tip');
-const deathBanner = document.getElementById('death-banner');
+// ─── 服务器URL参数 ──────────────────────────────────────
+const params = new URLSearchParams(location.search);
+const defServer = params.get('server') || '';
+const defRoom = params.get('room') || '';
+if (defServer) document.getElementById('in-server').value = defServer;
+if (defRoom) document.getElementById('in-room').value = defRoom;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────────────────────────────────
-let myId      = null;
-let myColor   = '#39d353';
-let myName    = '我';
-let roomId    = null;
-let isMaster  = false;   // host drives tick & food
+// ─── 方向映射 ────────────────────────────────────────────
+const DIR_MAP = {up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
 
-let players   = {};      // id -> { name, color, body, dir, nextDir, alive, score, deadTicks }
-let foods     = [];
-let tick      = 0;
-let gameTimer = null;
-
-let ably, channel;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// URL room param
-// ─────────────────────────────────────────────────────────────────────────────
-function getRoomFromURL() {
-  return new URLSearchParams(location.search).get('r');
+// ─── HTTP 轮询 ───────────────────────────────────────────
+function poll() {
+  if (!serverUrl || !connected) return;
+  const url = serverUrl + '/poll?r=' + encodeURIComponent(roomId) + '&id=' + myId + '&tick=' + myTick;
+  fetch(url).then(r => r.json()).then(data => {
+    if (data.type === 'state') applyState(data);
+  }).catch(()=>{});
 }
 
-// Pre-fill room from URL
-const urlRoom = getRoomFromURL();
-if (urlRoom) roomInput.value = urlRoom;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────────────────────────────────────
-function randInt(n)  { return Math.floor(Math.random() * n); }
-function uid()       { return Math.random().toString(36).slice(2, 10); }
-function randRoom()  { const w=['星','月','风','云','火','水','金','木','土','雷']; return w[randInt(w.length)] + w[randInt(w.length)] + (100+randInt(900)); }
-
-function isOccupied(x, y, excludeId) {
-  for (const [id, p] of Object.entries(players)) {
-    if (id === excludeId || !p.alive) continue;
-    if (p.body.some(b => b.x === x && b.y === y)) return true;
-  }
-  for (const f of foods) { if (f.x === x && f.y === y) return true; }
-  return false;
+function sendDir(dx, dy) {
+  if (!serverUrl || !myId) return;
+  fetch(serverUrl + '/msg?r=' + encodeURIComponent(roomId) + '&id=' + myId, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({type:'dir', dir:{x:dx,y:dy}})
+  }).catch(()=>{});
 }
 
-function spawnFood() {
-  for (let t = 0; t < 500; t++) {
-    const x = randInt(COLS), y = randInt(ROWS);
-    if (!isOccupied(x, y, null)) return { x, y };
+function applyState(data) {
+  myTick = data.tick || 0;
+  foods = (data.foods||[]).map(f=>(f.x,f.y));
+  foods = (data.foods||[]);
+
+  // 处理 join/leave/others
+  const ids = Object.keys(data.players||{});
+  if (ids.length && !myId) {
+    myId = ids[ids.length-1]; // 自己取最后一个
   }
-  return { x: randInt(COLS), y: randInt(ROWS) };
+
+  for (const [id, p] of Object.entries(data.players||{})) {
+    if (id === myId) {
+      myColor = p.color;
+      myDead = !p.alive;
+    }
+  }
+
+  players = data.players||{};
+  render();
+  updateRank();
 }
 
-function spawnSnake(id) {
-  const idx = Object.keys(players).indexOf(id);
-  const color = COLORS[idx % COLORS.length];
-  for (let t = 0; t < 200; t++) {
-    const hx = 3 + randInt(COLS - 6), hy = 3 + randInt(ROWS - 6);
-    const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-    const d = dirs[randInt(dirs.length)];
-    const body = [];
-    let ok = true;
-    for (let i = 0; i < 3; i++) {
-      const bx = hx - d.x * i, by = hy - d.y * i;
-      if (bx < 0 || bx >= COLS || by < 0 || by >= ROWS || isOccupied(bx, by, id)) { ok = false; break; }
-      body.push({ x: bx, y: by });
-    }
-    if (ok) return { body, dir: d, nextDir: d, color };
-  }
-  // fallback
-  return { body: [{x:randInt(COLS),y:randInt(ROWS)}], dir:{x:1,y:0}, nextDir:{x:1,y:0}, color };
+function updateRank() {
+  const sorted = Object.values(players).sort((a,b)=>b.score-a.score);
+  document.getElementById('rank-list').innerHTML = sorted.slice(0,5).map(p=>{
+    const me = p.color===myColor;
+    return `<div class="rank-item" style="${me?'background:rgba(57,211,83,.2);border:1px solid rgba(57,211,83,.4)':''}">
+      <span class="rank-dot" style="background:${p.color}"></span>
+      <span class="rank-name">${p.name||'??'}</span>
+      <span class="rank-score">${p.score}</span>
+    </div>`;
+  }).join('');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GAME LOGIC (Master only drives tick; all clients interpolate)
-// ─────────────────────────────────────────────────────────────────────────────
-function doTick() {
-  tick++;
-  const killEvents = [];
+// ─── 加入 ───────────────────────────────────────────────
+document.getElementById('btn-join').onclick = ()=>{
+  roomId = document.getElementById('in-room').value.trim() || 'room'+Math.floor(Math.random()*9000+1000);
+  serverUrl = document.getElementById('in-server').value.replace(/\/$/,'');
+  const name = document.getElementById('in-name').value.trim();
+  if (!serverUrl) { alert('请输入服务器地址'); return; }
 
-  // Respawn dead
-  for (const [id, p] of Object.entries(players)) {
-    if (!p.alive) {
-      p.deadTicks = (p.deadTicks || 0) + 1;
-      if (p.deadTicks >= RESPAWN_TICKS) {
-        const sp = spawnSnake(id);
-        p.body = sp.body; p.dir = sp.dir; p.nextDir = sp.nextDir;
-        p.alive = true; p.deadTicks = 0;
-      }
-    }
+  // 首次请求加入（GET /poll 会自动创建玩家）
+  document.getElementById('join-ui').style.display = 'none';
+  document.getElementById('room-label').textContent = '🏠 ' + roomId;
+  if (navigator.maxTouchPoints > 0) {
+    document.getElementById('mobile-ctrl').style.display = 'flex';
   }
-
-  // Move
-  for (const [id, p] of Object.entries(players)) {
-    if (!p.alive) continue;
-    p.dir = p.nextDir;
-    const head = { x: p.body[0].x + p.dir.x, y: p.body[0].y + p.dir.y };
-
-    // Wall
-    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
-      p.alive = false; p.deadTicks = 0;
-      killEvents.push({ killer: null, victim: id });
-      continue;
-    }
-
-    // Self
-    if (p.body.slice(1).some(b => b.x === head.x && b.y === head.y)) {
-      p.alive = false; p.deadTicks = 0;
-      killEvents.push({ killer: null, victim: id });
-      continue;
-    }
-
-    // Others
-    let killed = false;
-    for (const [oid, op] of Object.entries(players)) {
-      if (oid === id || !op.alive) continue;
-      // Head-head
-      if (op.body[0].x === head.x && op.body[0].y === head.y) {
-        p.alive = false; p.deadTicks = 0;
-        op.score += 5;
-        killEvents.push({ killer: oid, victim: id });
-        killed = true; break;
-      }
-      // Body
-      if (op.body.slice(1).some(b => b.x === head.x && b.y === head.y)) {
-        p.alive = false; p.deadTicks = 0;
-        op.score += 3;
-        killEvents.push({ killer: oid, victim: id });
-        killed = true; break;
-      }
-    }
-    if (killed) continue;
-
-    p.body.unshift(head);
-
-    // Food
-    const fi = foods.findIndex(f => f.x === head.x && f.y === head.y);
-    if (fi !== -1) {
-      foods.splice(fi, 1);
-      p.score += 10;
-      foods.push(spawnFood());
-    } else {
-      p.body.pop();
-    }
-  }
-
-  while (foods.length < FOOD_CNT) foods.push(spawnFood());
-
-  // Broadcast full state
-  publishState();
-}
-
-function publishState() {
-  if (!channel) return;
-  const slim = {};
-  for (const [id, p] of Object.entries(players)) {
-    slim[id] = {
-      name: p.name, color: p.color,
-      body: p.body, dir: p.dir,
-      alive: p.alive, score: p.score,
-      deadTicks: p.deadTicks || 0,
-    };
-  }
-  channel.publish('state', { tick, players: slim, foods }).catch(() => {});
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ABLY SETUP
-// ─────────────────────────────────────────────────────────────────────────────
-async function joinRoom(room, name) {
-  myId    = uid();
-  roomId  = room;
-  myName  = name || DEFAULT_NAMES[randInt(DEFAULT_NAMES.length)];
-
-  connStatus.textContent = '🟡 连接中…';
-  connStatus.className   = '';
-
-  ably = new Ably.Realtime({ key: ABLY_KEY, clientId: myId });
-  await new Promise((res, rej) => {
-    ably.connection.once('connected', res);
-    ably.connection.once('failed',    rej);
-  });
-
-  connStatus.textContent = '🟢 已连接';
-  connStatus.className   = 'ok';
-
-  channel = ably.channels.get(`snake:${room}`);
-
-  // Subscribe to state (from master)
-  channel.subscribe('state', ({ data }) => {
-    if (isMaster) return; // I published this
-    tick     = data.tick;
-    foods    = data.foods;
-    // Merge – preserve my nextDir
-    for (const [id, p] of Object.entries(data.players)) {
-      if (id === myId) {
-        if (players[myId]) {
-          data.players[id].nextDir = players[myId].nextDir;
-        }
-      }
-      players[id] = data.players[id];
-    }
-    // Remove gone players
-    for (const id of Object.keys(players)) {
-      if (!data.players[id]) delete players[id];
-    }
-    updateHUD();
-  });
-
-  // Subscribe to direction updates (from other players when I'm master)
-  channel.subscribe('dir', ({ data }) => {
-    if (!isMaster) return;
-    const p = players[data.id];
-    if (!p || !p.alive) return;
-    const nd = data.dir, cd = p.dir;
-    if (nd.x !== -cd.x || nd.y !== -cd.y) p.nextDir = nd;
-  });
-
-  // Subscribe to join events
-  channel.subscribe('join', ({ data }) => {
-    if (data.id === myId) return;
-    if (!players[data.id]) {
-      players[data.id] = {
-        name: data.name, color: data.color,
-        body: [], dir:{x:1,y:0}, nextDir:{x:1,y:0},
-        alive: false, score: 0, deadTicks: RESPAWN_TICKS - 1,
-      };
-      if (isMaster) {
-        const sp = spawnSnake(data.id);
-        players[data.id].body     = sp.body;
-        players[data.id].dir      = sp.dir;
-        players[data.id].nextDir  = sp.dir;
-        players[data.id].alive    = true;
-        players[data.id].deadTicks = 0;
-        publishState();
-      }
-    }
-  });
-
-  // Subscribe to leave events
-  channel.subscribe('leave', ({ data }) => {
-    delete players[data.id];
-    updateHUD();
-  });
-
-  // Presence: check if I'm master (first one in room)
-  await channel.presence.enter({ name: myName });
-  const presenceSet = await channel.presence.get();
-
-  // Elect master: member with earliest enter time (smallest clientId alphabetically as tiebreak)
-  const ids = presenceSet.map(m => m.clientId).sort();
-  isMaster  = (ids[0] === myId);
-
-  // Assign color based on join order
-  const myIdx = ids.indexOf(myId);
-  myColor = COLORS[myIdx % COLORS.length];
-
-  // Add myself to players
-  players[myId] = {
-    name: myName, color: myColor,
-    body: [], dir:{x:1,y:0}, nextDir:{x:1,y:0},
-    alive: false, score: 0, deadTicks: RESPAWN_TICKS - 1,
-  };
-
-  if (isMaster) {
-    // Init foods
-    foods = [];
-    for (let i = 0; i < FOOD_CNT; i++) foods.push(spawnFood());
-    // Spawn all present players
-    for (const m of presenceSet) {
-      const idx2 = ids.indexOf(m.clientId);
-      const color2 = COLORS[idx2 % COLORS.length];
-      if (!players[m.clientId]) {
-        players[m.clientId] = {
-          name: m.data?.name || DEFAULT_NAMES[idx2 % DEFAULT_NAMES.length],
-          color: color2,
-          body: [], dir:{x:1,y:0}, nextDir:{x:1,y:0},
-          alive: false, score: 0, deadTicks: RESPAWN_TICKS - 1,
-        };
-      } else {
-        players[m.clientId].color = color2;
-        players[m.clientId].name  = m.data?.name || players[m.clientId].name;
-      }
-      const sp = spawnSnake(m.clientId);
-      players[m.clientId].body     = sp.body;
-      players[m.clientId].dir      = sp.dir;
-      players[m.clientId].nextDir  = sp.dir;
-      players[m.clientId].alive    = true;
-      players[m.clientId].deadTicks = 0;
-    }
-
-    // Start tick loop
-    gameTimer = setInterval(doTick, TICK_MS);
-    publishState();
-  } else {
-    // Tell master I joined
-    channel.publish('join', { id: myId, name: myName, color: myColor });
-  }
-
-  // Re-elect if master leaves
-  channel.presence.subscribe('leave', async () => {
-    const ps = await channel.presence.get();
-    const sortedIds = ps.map(m => m.clientId).sort();
-    const wasMaster = isMaster;
-    isMaster = sortedIds.length > 0 && sortedIds[0] === myId;
-    if (!wasMaster && isMaster) {
-      // Take over as master
-      if (!gameTimer) gameTimer = setInterval(doTick, TICK_MS);
-    }
-  });
-
-  // Update badge
-  myBadge.textContent   = myName;
-  myBadge.style.color   = myColor;
-  myBadge.style.borderColor = myColor;
-
-  // Update room display + share link
-  roomDisplay.textContent = roomId;
-  onlineCount.textContent = presenceSet.length;
-  const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(roomId)}`;
-  shareLink.textContent   = url;
-  shareArea.style.display = 'flex';
-
-  // Hide overlay, start render
-  overlay.classList.add('hidden');
-  requestAnimationFrame(renderLoop);
-  updateHUD();
-
-  // Presence count update
-  channel.presence.subscribe(() => {
-    channel.presence.get().then(ps => {
-      onlineCount.textContent = ps.length;
-    });
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HUD
-// ─────────────────────────────────────────────────────────────────────────────
-let deathTimer = null;
-
-function updateHUD() {
-  const me = players[myId];
-  if (me) {
-    myScoreVal.textContent = me.score;
-    if (!me.alive) {
-      deathBanner.classList.add('show');
-      clearTimeout(deathTimer);
-      deathTimer = setTimeout(() => deathBanner.classList.remove('show'), 2500);
-    }
-  }
-
-  playerList.innerHTML = '';
-  const sorted = Object.entries(players).sort(([,a],[,b]) => b.score - a.score);
-  for (const [id, p] of sorted) {
-    const chip = document.createElement('div');
-    chip.className = 'pchip' + (id === myId ? ' me' : '') + (!p.alive ? ' dead' : '');
-    chip.style.cssText = `background:${p.color}22;border:1px solid ${p.color};color:${p.color}`;
-    chip.textContent   = `${p.name} ${p.score}`;
-    playerList.appendChild(chip);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RENDER
-// ─────────────────────────────────────────────────────────────────────────────
-function lerp(a, b, t) { return a + (b - a) * t; }
-
-function lerpColor(a, b, t) {
-  const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
-  const ar=(ah>>16)&0xff,ag=(ah>>8)&0xff,ab=ah&0xff;
-  const br=(bh>>16)&0xff,bg=(bh>>8)&0xff,bb=bh&0xff;
-  const r=Math.round(ar+(br-ar)*t),g=Math.round(ag+(bg-ag)*t),bv=Math.round(ab+(bb-ab)*t);
-  return `#${((r<<16)|(g<<8)|bv).toString(16).padStart(6,'0')}`;
-}
-
-function renderLoop() {
-  drawFrame();
-  requestAnimationFrame(renderLoop);
-}
-
-function drawFrame() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Grid
-  ctx.strokeStyle = '#1c2128';
-  ctx.lineWidth   = 0.4;
-  for (let c = 0; c <= COLS; c++) {
-    ctx.beginPath(); ctx.moveTo(c*CELL,0); ctx.lineTo(c*CELL,canvas.height); ctx.stroke();
-  }
-  for (let r = 0; r <= ROWS; r++) {
-    ctx.beginPath(); ctx.moveTo(0,r*CELL); ctx.lineTo(canvas.width,r*CELL); ctx.stroke();
-  }
-
-  // Foods
-  const t = Date.now();
-  for (const f of foods) {
-    const pulse = 0.78 + 0.22 * Math.sin(t / 300 + f.x * 2.3 + f.y * 3.7);
-    const r     = CELL * 0.38 * pulse;
-    const cx    = f.x * CELL + CELL / 2;
-    const cy    = f.y * CELL + CELL / 2;
-    // Glow
-    const grd = ctx.createRadialGradient(cx,cy,0,cx,cy,r*1.8);
-    grd.addColorStop(0, 'rgba(248,81,73,.5)');
-    grd.addColorStop(1, 'rgba(248,81,73,0)');
-    ctx.fillStyle = grd;
-    ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, Math.PI*2); ctx.fill();
-    // Core
-    ctx.fillStyle = '#f85149';
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-    // Shine
-    ctx.fillStyle = 'rgba(255,255,255,.45)';
-    ctx.beginPath(); ctx.arc(cx - r*0.25, cy - r*0.28, r*0.3, 0, Math.PI*2); ctx.fill();
-  }
-
-  // Snakes
-  for (const [id, p] of Object.entries(players)) {
-    if (!p.body || p.body.length === 0) continue;
-
-    if (!p.alive) {
-      // Ghost effect
-      ctx.globalAlpha = 0.18 + 0.12 * Math.sin(t / 200);
-      for (const seg of p.body) {
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(seg.x*CELL+CELL/2, seg.y*CELL+CELL/2, CELL*0.35, 0, Math.PI*2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      continue;
-    }
-
-    const isMe = id === myId;
-
-    // Body segments
-    p.body.forEach((seg, i) => {
-      const pct  = i / Math.max(p.body.length - 1, 1);
-      const pad  = i === 0 ? 1 : 2;
-      const rad  = i === 0 ? 5 : 4;
-      const dark = lerpColor(p.color, '#0d1117', pct * 0.55);
-      ctx.fillStyle = i === 0 ? p.color : dark;
-      ctx.beginPath();
-      ctx.roundRect(seg.x*CELL+pad, seg.y*CELL+pad, CELL-pad*2, CELL-pad*2, rad);
-      ctx.fill();
-    });
-
-    // My highlight ring
-    if (isMe) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth   = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(p.body[0].x*CELL+1, p.body[0].y*CELL+1, CELL-2, CELL-2, 5);
-      ctx.stroke();
-    }
-
-    // Eyes
-    if (p.body.length >= 2) {
-      const dir = { x: p.body[0].x - p.body[1].x, y: p.body[0].y - p.body[1].y };
-      const cx  = p.body[0].x*CELL + CELL/2;
-      const cy  = p.body[0].y*CELL + CELL/2;
-      const off = 3.5;
-      let eyes;
-      if      (dir.x ===  1) eyes = [[cx+3,cy-off],[cx+3,cy+off]];
-      else if (dir.x === -1) eyes = [[cx-3,cy-off],[cx-3,cy+off]];
-      else if (dir.y === -1) eyes = [[cx-off,cy-3],[cx+off,cy-3]];
-      else                   eyes = [[cx-off,cy+3],[cx+off,cy+3]];
-
-      ctx.fillStyle = '#fff';
-      for (const [ex,ey] of eyes) { ctx.beginPath(); ctx.arc(ex,ey,2.8,0,Math.PI*2); ctx.fill(); }
-      ctx.fillStyle = '#0d1117';
-      for (const [ex,ey] of eyes) { ctx.beginPath(); ctx.arc(ex+dir.x*1.2,ey+dir.y*1.2,1.3,0,Math.PI*2); ctx.fill(); }
-    }
-
-    // Name tag (only others)
-    if (!isMe && p.body.length > 0) {
-      const hx = p.body[0].x * CELL + CELL / 2;
-      const hy = p.body[0].y * CELL - 3;
-      ctx.font        = `bold ${Math.max(10, CELL * 0.55)}px sans-serif`;
-      ctx.textAlign   = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillStyle   = p.color;
-      ctx.fillText(p.name, hx, hy);
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONTROLS
-// ─────────────────────────────────────────────────────────────────────────────
-function sendDir(dir) {
-  if (!myId || !players[myId] || !players[myId].alive) return;
-  const cur = players[myId].dir;
-  if (dir.x === -cur.x && dir.y === -cur.y) return; // no 180
-  players[myId].nextDir = dir;
-
-  if (isMaster) {
-    // Already applied locally
-  } else {
-    channel?.publish('dir', { id: myId, dir });
-  }
-}
-
-const keyMap = {
-  ArrowUp:{x:0,y:-1}, ArrowDown:{x:0,y:1},
-  ArrowLeft:{x:-1,y:0}, ArrowRight:{x:1,y:0},
-  w:{x:0,y:-1}, s:{x:0,y:1}, a:{x:-1,y:0}, d:{x:1,y:0},
-  W:{x:0,y:-1}, S:{x:0,y:1}, A:{x:-1,y:0}, D:{x:1,y:0},
+  document.getElementById('ctrl-hint').style.display = 'block';
+  connected = true;
+  poll();
+  pollTimer = setInterval(poll, 200);
 };
+
+// ─── 键盘控制 ───────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  const d = keyMap[e.key];
-  if (d) { e.preventDefault(); sendDir(d); }
+  const map = {ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0},
+    w:{x:0,y:-1},s:{x:0,y:1},a:{x:-1,y:0},d:{x:1,y:0},
+    W:{x:0,y:-1},S:{x:0,y:1},A:{x:-1,y:0},D:{x:1,y:0}};
+  const d = map[e.key];
+  if (d) { e.preventDefault(); tryDir(d.x, d.y); }
 });
 
-// D-Pad
-document.getElementById('dup').addEventListener('click',    () => sendDir({x:0,y:-1}));
-document.getElementById('ddown').addEventListener('click',  () => sendDir({x:0,y:1}));
-document.getElementById('dleft').addEventListener('click',  () => sendDir({x:-1,y:0}));
-document.getElementById('dright').addEventListener('click', () => sendDir({x:1,y:0}));
-for (const el of [document.getElementById('dup'),document.getElementById('ddown'),document.getElementById('dleft'),document.getElementById('dright')]) {
-  el.addEventListener('touchstart', e => { e.preventDefault(); el.click(); }, { passive: false });
+// ─── 触屏控制 ───────────────────────────────────────────
+let touchStartX=0, touchStartY=0;
+canvas.addEventListener('touchstart', e=>{touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY},{passive:true});
+canvas.addEventListener('touchend', e=>{
+  const dx=e.changedTouches[0].clientX-touchStartX, dy=e.changedTouches[0].clientY-touchStartY;
+  if(Math.abs(dx)<15&&Math.abs(dy)<15)return;
+  if(Math.abs(dx)>Math.abs(dy)) tryDir(dx>0?{x:1,y:0}:{x:-1,y:0});
+  else tryDir(dy>0?{x:0,y:1}:{x:0,y:-1});
+},{passive:true});
+
+document.querySelectorAll('.ctrl-btn[data-dir]').forEach(b=>{
+  b.addEventListener('touchstart',e=>{e.preventDefault();const d=DIR_MAP[b.dataset.dir];tryDir(d.x,d.y);},{passive:false});
+  b.addEventListener('click',()=>{const d=DIR_MAP[b.dataset.dir];tryDir(d.x,d.y);});
+});
+
+function tryDir(dx, dy) {
+  const p = players[myId];
+  if (!p) return;
+  const cur = p.dir||{x:1,y:0};
+  if (dx===-cur.x&&dy===-cur.y) return; // 不能反向
+  lastDir = {x:dx,y:dy};
+  sendDir(dx, dy);
 }
 
-// Swipe
-let ts = null;
-canvas.addEventListener('touchstart', e => { ts = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
-canvas.addEventListener('touchend',   e => {
-  if (!ts) return;
-  const dx = e.changedTouches[0].clientX - ts.x;
-  const dy = e.changedTouches[0].clientY - ts.y;
-  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) { ts = null; return; }
-  if (Math.abs(dx) > Math.abs(dy)) sendDir(dx > 0 ? {x:1,y:0} : {x:-1,y:0});
-  else sendDir(dy > 0 ? {x:0,y:1} : {x:0,y:-1});
-  ts = null;
-}, { passive: true });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UI EVENTS
-// ─────────────────────────────────────────────────────────────────────────────
-btnCreate.addEventListener('click', async () => {
-  const room = roomInput.value.trim() || randRoom();
-  const name = nameInput.value.trim().slice(0, 8);
-  btnCreate.disabled = true;
-  btnCreate.textContent = '连接中…';
-  try {
-    await joinRoom(room, name);
-  } catch (e) {
-    connStatus.textContent = '❌ 连接失败';
-    connStatus.className   = 'err';
-    btnCreate.disabled     = false;
-    btnCreate.textContent  = '创建 / 加入';
-    alert('连接失败，请检查网络后重试\n' + e.message);
-  }
-});
-
-shareLink.addEventListener('click', () => {
-  navigator.clipboard.writeText(shareLink.textContent).then(() => {
-    copyTip.style.opacity = '1';
-    setTimeout(() => copyTip.style.opacity = '0', 1800);
-  });
-});
-
-// Auto-join if room in URL
-if (urlRoom) {
-  roomInput.value = urlRoom;
-  btnCreate.textContent = '加入房间 ' + urlRoom;
-}
-
-// Initial idle render
-requestAnimationFrame(() => {
-  ctx.fillStyle = '#161b22';
+// ─── 渲染 ───────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = '#0a0a0f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = `${CELL}px sans-serif`;
-  ctx.fillStyle = '#484f58';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('等待进入游戏…', canvas.width/2, canvas.height/2);
-});
+
+  // 网格（淡化）
+  ctx.strokeStyle = 'rgba(255,255,255,.02)';
+  ctx.lineWidth = .5;
+  for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*CELL,0);ctx.lineTo(x*CELL,ROWS*CELL);ctx.stroke();}
+  for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*CELL);ctx.lineTo(COLS*CELL,y*CELL);ctx.stroke();}
+
+  // 食物
+  foods.forEach(f=>{
+    const cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2;
+    const r=CELL*.4;
+    ctx.beginPath();
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    grd.addColorStop(0,'rgba(255,107,107,.9)');
+    grd.addColorStop(1,'rgba(255,50,50,.6)');
+    ctx.fillStyle=grd;
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fill();
+    // 光晕
+    ctx.beginPath();
+    ctx.fillStyle='rgba(255,80,80,.15)';
+    ctx.arc(cx,cy,r*1.5,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // 蛇
+  Object.entries(players).forEach(([id,p])=>{
+    if(!p||!p.body||!p.body.length)return;
+    const me=id===myId;
+    p.body.forEach((seg,i)=>{
+      const sx=seg.x*CELL, sy=seg.y*CELL;
+      const head=i===0;
+      if(me&&!p.alive){ctx.globalAlpha=.3+Math.sin(Date.now()*.01)*.2;}
+
+      // 身体
+      const grd=ctx.createLinearGradient(sx,sy,sx+CELL,sy+CELL);
+      grd.addColorStop(0,p.color);
+      grd.addColorStop(1,adjustColor(p.color,-40));
+      ctx.fillStyle=grd;
+      const pad=head?0:1;
+      ctx.beginPath();
+      ctx.roundRect(sx+pad,sy+pad,CELL-pad*2,CELL-pad*2,head?4:2);
+      ctx.fill();
+
+      // 高光
+      ctx.fillStyle='rgba(255,255,255,.15)';
+      ctx.beginPath();
+      ctx.roundRect(sx+pad+2,sy+pad+2,CELL-pad*2-4,(CELL-pad*2)/2,2);
+      ctx.fill();
+
+      // 眼睛
+      if(head&&p.alive){
+        const d=p.dir||{x:1,y:0};
+        const ex=sx+CELL/2+d.x*CELL*.25, ey=sy+CELL/2+d.y*CELL*.25;
+        ctx.fillStyle='#fff';
+        ctx.beginPath();ctx.arc(ex+d.y*.15*CELL,ey-d.x*.15*CELL,2.5,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(ex-d.y*.15*CELL,ey+d.x*.15*CELL,2.5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#000';
+        ctx.beginPath();ctx.arc(ex+d.y*.15*CELL+d.x,ey-d.x*.15*CELL+d.y,1.2,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(ex-d.y*.15*CELL+d.x,ey+d.x*.15*CELL+d.y,1.2,0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    });
+
+    // 名字
+    if(p.body.length>0){
+      const h=p.body[0];
+      ctx.fillStyle=p.color;
+      ctx.font=`bold ${Math.max(9,CELL*.45)}px sans-serif`;
+      ctx.textAlign='center';
+      ctx.fillText(p.name||'',h.x*CELL+CELL/2,h.y*CELL-2);
+    }
+  });
+}
+
+function adjustColor(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,Math.max(0,(n>>16)+amt));
+  const g=Math.min(255,Math.max(0,((n>>8)&0xff)+amt));
+  const b=Math.min(255,Math.max(0,(n&0xff)+amt));
+  return'#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+setInterval(render, 60);
 </script>
 </body>
 </html>
